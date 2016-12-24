@@ -1,5 +1,6 @@
 # em-optimizer
 A Python implementation of the Electromagnetism-like Mechanism for global optimization.
+![EM pack](img/em.gif)
 
 ## Overview
 We implement EM, a heuristic for bounded optimization problems. This is a stochastic algorithm, which basically uses particles that attract or repel each other according to the objective function value at their locations. The objective function is from R^n to R, and it does not need to be convex. Gradients are not used, so the algorithm can be used for complicated functions as well.
@@ -67,6 +68,8 @@ while(em.iterno < 100):
 plt.figure()
 plt.plot(ofvlist)
 ```
+![Convergence curve](img/example1-1.png)
+
 Alternatively, we can follow until the objective function value drops below a certain level.
 ```
 em = EMoptimizer(dim=2, nparticles=16, objective=ackley, lower=[-32,-32], upper=[32,32])
@@ -80,6 +83,7 @@ while(ofvlist[-1] > 0.01 and em.iterno < 10000):
 plt.figure()
 plt.plot(ofvlist)
 ```
+![Convergence curve](img/example1-2.png)
 
 ## Example: Plot the particle positions at each iteration step
 Note: The following code will create 100 PNG files in the working directory.
@@ -126,3 +130,5 @@ while(em.iterno <= maxiters):
     
     em.iterate()
 ```
+Below we see the initial position of the particles and a contour plot of the Damavandi function. The red circle is the particle with the lowest objective function value. Particles are placed at random, so your results will vary.
+![EM pack](img/example2.png)
