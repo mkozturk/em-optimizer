@@ -121,6 +121,7 @@ class EMoptimizer:
             else:
                 p.pos[k] += r * force[k] * (p.pos[k] - self.lower[k])
 
+
     def localsearch(self, maxiter=100, delta=0.001):
         """Updates Particle position with a local minimum search."""
 
@@ -148,7 +149,11 @@ class EMoptimizer:
             self.calcF(p)
         for p in self.pack:
             self.move(p)
+        # Update the particle charges
         self.best = self.getbest()
+        denom = sum([self.f(p.pos) - self.f(self.best.pos) for p in self.pack])
+        for p in self.pack:
+            p.q = np.exp(-self.dim * (self.f(p.pos)-self.f(self.best.pos)/denom))
         self.iterno += 1
         
     def getpos(self):
