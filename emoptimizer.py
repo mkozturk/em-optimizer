@@ -107,14 +107,16 @@ class EMoptimizer:
                 p.force += (pp.pos - p.pos)*pp.q*p.q/np.dot(pp.pos-p.pos,pp.pos-p.pos)
             else:
                 p.force -= (pp.pos - p.pos)*pp.q*p.q/np.dot(pp.pos-p.pos,pp.pos-p.pos)
-    
+
     def move(self,p):
         """Update particle position in the force direction."""
         if p is self.best:
             return # do not move if this is the best position
         r = np.random.uniform()
         force = p.force
-        force = force / np.sqrt(np.dot(force,force))  # get the direction
+        forcemag = np.sqrt(np.dot(force,force))
+        if forcemag > 1e-15:
+            force = force / np.sqrt(np.dot(force,force))  # get the direction
         for k in range(self.dim):
             if force[k] > 0:
                 p.pos[k] += r * force[k] * (self.upper[k] - p.pos[k])
