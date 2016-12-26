@@ -85,7 +85,7 @@ plt.plot(ofvlist)
 ```
 ![Convergence curve](img/example1-2.png)
 
-## Example: Plot the particle positions at each iteration step
+## Example: Display particle positions at each iteration step
 Note: The following code will create 100 PNG files in the working directory.
 
 ```
