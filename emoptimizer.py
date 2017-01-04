@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Dec 22 10:15:51 2016
-
-@author: kaan
-"""
 import numpy as np
+from numpy.random import uniform
 from copy import deepcopy
 
 class EMoptimizer:
@@ -45,128 +41,130 @@ class EMoptimizer:
     print em.getbestpos(), em.getbestofv()
     
     """
-    class Particle:
-        def __init__(self,x):
-            self.pos = x
-            self.q = 0
-            self.force = 0
-            
     def __init__(self, dim, nparticles, objective, lower, upper):
         self.dim = dim # dimension of the problem
-        self.npart = nparticles # number of particles
+        self.nparticles = nparticles # number of particles
         self.f = objective  # the function to minimize, R^n -> R
         self.upper = np.array(upper) # the upper limit of the region
         self.lower = np.array(lower) # the lower limit of the region
-        self.pack = self.initpack()
-        self.best = self.getbest() # the particle in the best position
+        self.pack = _Pack(self)  # Initialize a Pack, passing itself as parameter to it.
         self.iterno = 0
-        self.initpack()
-    
-    def getq(self,x):
-        """Return the charge for the given position x."""
-        denom = sum([self.f(x)-self.f(self.best.pos) for p in self.pack])
-        return np.exp(-self.dim * (self.f(x)-self.f(self.best.pos))/denom)
 
-    def initpack(self):
-        """Return a randomly initialized list of Particles."""
-        pack=[]
-        for i in range(self.npart):
-            x = np.zeros(self.dim)
-            for k in range(self.dim):
-                x[k] = np.random.uniform(self.lower[k], self.upper[k])
-            p = self.Particle(x)
-            p.force = np.zeros(self.dim)
-            pack.append(p)
-        # set the charges...
-        best = self.getbest(pack)
-        denom = sum([self.f(p.pos) - self.f(best.pos) for p in pack])
-        for p in pack:
-            p.q = np.exp(-self.dim * (self.f(p.pos)-self.f(best.pos)/denom))
-        
-        return pack
-        
-    def getbest(self, pack=None):
-        """Determine the best particle in the pack."""
-        # Call either as getbest() or getbest(pack)
-        if pack==None:
-            pack = self.pack
-            
-        best = pack[0]
-        for p in pack[1:]:
-            if self.f(p.pos) < self.f(best.pos):
-                best = p
-        return best
-    
-    def calcF(self,p):
-        """Set the force vector of one Particle."""
-        p.force = np.zeros(self.dim)
-        for pp in self.pack:
-            if p is pp:
-                continue
-            if self.f(pp.pos) < self.f(p.pos):
-                p.force += (pp.pos - p.pos)*pp.q*p.q/np.dot(pp.pos-p.pos,pp.pos-p.pos)
-            else:
-                p.force -= (pp.pos - p.pos)*pp.q*p.q/np.dot(pp.pos-p.pos,pp.pos-p.pos)
+    def iterate(self):
+        """Make one iteration of the algorithm over all particles."""
+        self.pack.moveall()
+        self.iterno += 1
 
-    def move(self,p):
+    def getpos(self):
+        """Return the positions of particles as an m-by-n array."""
+        return np.array([p.pos for p in self.pack.particles])
+
+    def getofv(self):
+        """Return the objective function values as an array of size m."""
+        return np.array([self.f(p.pos) for p in self.pack.particles])
+
+    def getbestpos(self):
+        """Return the position of the best particle."""
+        return self.pack.best.pos
+        
+    def getbestofv(self):
+        """Return the objective function value of the current best particle."""
+        return self.f(self.pack.best.pos)
+
+class _Particle:
+    """Properties and operations on a single particle. Initialized and used
+    by the _Pack class."""
+    def __init__(self, pos, pack):
+        self.pack = pack
+        self.pos = pos
+        self.q = None
+        self.force = None
+
+    def localsearch(self, maxiter=100, delta=0.01):
+        """Updates Particle position with a local coordinate search."""
+        counter = 1
+        for k in range(self.pack.opt.dim):
+            direction = np.random.choice((-1,1))
+            while counter < maxiter:
+                y = deepcopy(self.pos)
+                r = np.random.uniform()
+                y[k] += direction*r*delta*(self.pack.opt.upper[k]-self.pack.opt.lower[k])
+                if self.pack.opt.f(y) < self.pack.opt.f(self.pos):
+                    self.pos = deepcopy(y)
+                    break
+                counter += 1
+    def move(self):
         """Update particle position in the force direction."""
-        if p is self.best:
+        if self is self.pack.best:
             return # do not move if this is the best position
         r = np.random.uniform()
-        force = p.force
+        force = self.force
         forcemag = np.sqrt(np.dot(force,force))
         if forcemag > 1e-15:
             force = force / np.sqrt(np.dot(force,force))  # get the direction
-        for k in range(self.dim):
+        for k in range(self.pack.opt.dim):
             if force[k] > 0:
-                p.pos[k] += r * force[k] * (self.upper[k] - p.pos[k])
+                self.pos[k] += r * force[k] * (self.pack.opt.upper[k] - self.pos[k])
             else:
-                p.pos[k] += r * force[k] * (p.pos[k] - self.lower[k])
+                self.pos[k] += r * force[k] * (self.pos[k] - self.pack.opt.lower[k])
 
-
-    def localsearch(self, maxiter=100, delta=0.001):
-        """Updates Particle position with a local minimum search."""
-
-        particles = [self.best]
-        #particles = self.pack
-        for p in particles:
-            counter = 1
-            for k in range(self.dim):
-                direction = np.random.choice((-1,1))
-                while counter < maxiter:
-                    y = deepcopy(p.pos)
-                    r = np.random.uniform()
-                    y[k] += direction*r*delta*(self.upper[k]-self.lower[k])
-                    if self.f(y) < self.f(p.pos):
-                        p.pos = deepcopy(y)
-                        break
-                    counter += 1
-                    
-
-    def iterate(self):
-        """Make one iteration of the optimizer."""
-        self.localsearch()
-        self.best = self.getbest()
-        for p in self.pack:
-            self.calcF(p)
-        for p in self.pack:
-            self.move(p)
-        # Update the particle charges
-        self.best = self.getbest()
-        denom = sum([self.f(p.pos) - self.f(self.best.pos) for p in self.pack])
-        for p in self.pack:
-            p.q = np.exp(-self.dim * (self.f(p.pos)-self.f(self.best.pos)/denom))
-        self.iterno += 1
+class _Pack:
+    """A class for a pack of Particles. Initialized and used by EMoptimizer."""
+    def __init__(self, optimizer):
+        self.opt = optimizer # The optimizer that launched this Pack instance.
         
-    def getpos(self):
-        """Return the positions of particles as an m-by-n array."""
-        return np.array([p.pos for p in self.pack])
-    def getbestpos(self):
-        """Return the position of the best particle."""
-        return self.best.pos
-    def getofv(self):
-        """Return the objective function values as an array of size m."""
-        return np.array([self.f(p.pos) for p in self.pack])
-    def getbestofv(self):
-        """Return the objective function value of the current best particle."""
-        return self.f(self.best.pos)
+        self.particles = []
+        for n in range(self.opt.nparticles):
+            pos = np.zeros(self.opt.dim)
+            for d in range(self.opt.dim):
+                pos[d] = uniform(self.opt.lower[d], self.opt.upper[d])
+            self.particles.append(_Particle(pos,self))
+
+        self.best = self.getbest()
+        self.setcharges()
+        self.setforces()
+
+    def moveall(self):
+        """Moves every particle, updates the charges and forces."""
+        # This is the only function directly called by EMoptimizer.
+        
+        # All the idiosyncratic details about moving an individual particle,
+        # such as special handling of the best, 
+        # must be implemented in _Particle.move().
+        for p in self.particles:
+            p.move()
+            
+        # Particles can't know if they are the best. It can be checked only
+        # at the Pack level.
+        self.best = self.getbest()
+        self.best.localsearch()
+        
+        # Similarly, charge and force values require knowledge of the whole pack.
+        self.setcharges()
+        self.setforces()        
+
+    def getbest(self):
+        """Return the particle with the lowest OFV among the pack."""
+        best = self.particles[0]
+        for p in self.particles:
+            if self.opt.f(p.pos) < self.opt.f(best.pos):
+                best = p
+        return best
+
+    def setforces(self):
+        """Sets the force vectors of every particle in pack, in place."""
+        for p in self.particles:
+            p.force = np.zeros(self.opt.dim)
+            for pp in self.particles:
+                if p is pp:
+                    continue
+                if self.opt.f(pp.pos) < self.opt.f(p.pos):
+                    p.force += (pp.pos - p.pos)*pp.q*p.q/np.dot(pp.pos-p.pos,pp.pos-p.pos)
+                else:
+                    p.force -= (pp.pos - p.pos)*pp.q*p.q/np.dot(pp.pos-p.pos,pp.pos-p.pos)
+
+    def setcharges(self):
+        """Sets the charges of every particle in pack, in place."""
+        denom = sum([self.opt.f(p.pos)-self.opt.f(self.best.pos) for p in self.particles])
+        for p in self.particles:
+            p.q = np.exp(-self.opt.dim * (self.opt.f(p.pos)-self.opt.f(self.best.pos))/denom)
