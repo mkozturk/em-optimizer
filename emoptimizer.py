@@ -117,10 +117,11 @@ class _Pack:
         for n in range(self.opt.nparticles):
             pos = np.zeros(self.opt.dim)
             for d in range(self.opt.dim):
-                pos[d] = uniform(self.opt.lower[d], self.opt.upper[d])
+                pos[d] = np.random.uniform(self.opt.lower[d], self.opt.upper[d])
             self.particles.append(_Particle(pos,self))
 
         self.best = self.getbest()
+        self.farthest = self.getfarthest()
         self.setcharges()
         self.setforces()
 
@@ -138,7 +139,7 @@ class _Pack:
         # at the Pack level.
         self.best = self.getbest()
         self.best.localsearch()
-        
+        self.farthest = self.getfarthest()        
         # Similarly, charge and force values require knowledge of the whole pack.
         self.setcharges()
         self.setforces()        
@@ -151,17 +152,29 @@ class _Pack:
                 best = p
         return best
 
+    def getfarthest(self):
+        """Return the particle that is farthest from the current best."""
+        farthest = self.particles[0]  
+        best = self.getbest()
+        for p in self.particles:
+            if np.linalg.norm(p.pos-best.pos) > np.linalg.norm(farthest.pos-best.pos):
+                farthest = p
+        return farthest
+        
     def setforces(self):
         """Sets the force vectors of every particle in pack, in place."""
         for p in self.particles:
             p.force = np.zeros(self.opt.dim)
+            factor = 1
             for pp in self.particles:
                 if p is pp:
                     continue
+                if p is self.farthest:
+                    factor = np.random.choice([-1,1])
                 if self.opt.f(pp.pos) < self.opt.f(p.pos):
-                    p.force += (pp.pos - p.pos)*pp.q*p.q/np.dot(pp.pos-p.pos,pp.pos-p.pos)
+                    p.force += factor*(pp.pos - p.pos)*pp.q*p.q/np.dot(pp.pos-p.pos,pp.pos-p.pos)
                 else:
-                    p.force -= (pp.pos - p.pos)*pp.q*p.q/np.dot(pp.pos-p.pos,pp.pos-p.pos)
+                    p.force -= factor*(pp.pos - p.pos)*pp.q*p.q/np.dot(pp.pos-p.pos,pp.pos-p.pos)
 
     def setcharges(self):
         """Sets the charges of every particle in pack, in place."""
