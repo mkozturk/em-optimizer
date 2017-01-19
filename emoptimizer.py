@@ -48,7 +48,8 @@ class EMoptimizer:
         self.lower = np.array(lower) # the lower limit of the region
         self.pack = _Pack(self)  # Initialize a Pack, passing itself as parameter to it.
         self.iterno = 0
-        self.stepreduction = False
+        self.stepreduction = False  # If true, reduces the step size as t^(-0.25)
+        self.circular = False  # if true, the boundaries are circular (region is toroidal)
 
     def iterate(self):
         """Make one iteration of the algorithm over all particles."""
@@ -104,11 +105,21 @@ class _Particle:
         forcemag = np.sqrt(np.dot(force,force))
         if forcemag > 1e-15:
             force = force / np.sqrt(np.dot(force,force))  # get the direction
-        for k in range(self.pack.opt.dim):
-            if force[k] > 0:
-                self.pos[k] += r * force[k] * (self.pack.opt.upper[k] - self.pos[k])
-            else:
-                self.pos[k] += r * force[k] * (self.pos[k] - self.pack.opt.lower[k])
+
+        if self.pack.opt.circular:
+            for k in range(self.pack.opt.dim):
+                self.pos[k] += r*force[k]*(self.pack.opt.upper[k]-self.pack.opt.lower[k])
+                # Adjust particle positions with periodic boundary conditions:
+                if self.pos[k] > self.pack.opt.upper[k]:
+                    self.pos[k] = self.pos[k] - (self.pack.opt.upper[k]-self.pack.opt.lower[k])
+                if self.pos[k] < self.pack.opt.lower[k]:
+                    self.pos[k] = self.pos[k] + (self.pack.opt.upper[k]-self.pack.opt.lower[k])
+        else:
+            for k in range(self.pack.opt.dim):
+                if force[k] > 0:
+                    self.pos[k] += r * force[k] * (self.pack.opt.upper[k] - self.pos[k])
+                else:
+                    self.pos[k] += r * force[k] * (self.pos[k] - self.pack.opt.lower[k])
 
 class _Pack:
     """A class for a pack of Particles. Initialized and used by EMoptimizer."""
