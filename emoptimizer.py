@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from numpy.random import uniform
 from copy import deepcopy
 
 class EMoptimizer:
@@ -49,6 +48,7 @@ class EMoptimizer:
         self.lower = np.array(lower) # the lower limit of the region
         self.pack = _Pack(self)  # Initialize a Pack, passing itself as parameter to it.
         self.iterno = 0
+        self.stepreduction = False
 
     def iterate(self):
         """Make one iteration of the algorithm over all particles."""
@@ -98,6 +98,8 @@ class _Particle:
         if self is self.pack.best:
             return # do not move if this is the best position
         r = np.random.uniform()
+        if self.pack.opt.stepreduction:
+            r = (self.pack.opt.iterno+1)**(-0.25) * r
         force = self.force
         forcemag = np.sqrt(np.dot(force,force))
         if forcemag > 1e-15:
