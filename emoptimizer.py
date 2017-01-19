@@ -53,7 +53,9 @@ class EMoptimizer:
         self.iterno = 0
         self.stepreduction = stepreduction  # If true, reduces the step size as t^(-0.25)
         self.circular = circular  # if true, the boundaries are circular (region is toroidal)
-
+        self.localsearchmaxiter = 100
+        self.localsearchstep = 0.01
+        
     def iterate(self):
         """Make one iteration of the algorithm over all particles."""
         self.pack.moveall()
@@ -84,15 +86,15 @@ class _Particle:
         self.q = None
         self.force = None
 
-    def localsearch(self, maxiter=100, delta=0.01):
+    def localsearch(self):
         """Updates Particle position with a local coordinate search."""
         counter = 1
         for k in range(self.pack.opt.dim):
             direction = np.random.choice((-1,1))
-            while counter < maxiter:
+            while counter < self.pack.opt.localsearchmaxiter:
                 y = deepcopy(self.pos)
                 r = np.random.uniform()
-                y[k] += direction*r*delta*(self.pack.opt.upper[k]-self.pack.opt.lower[k])
+                y[k] += direction*r*self.pack.opt.localsearchstep*(self.pack.opt.upper[k]-self.pack.opt.lower[k])
                 if self.pack.opt.f(y) < self.pack.opt.f(self.pos):
                     self.pos = deepcopy(y)
                     break
