@@ -7,7 +7,7 @@ class EMoptimizer:
         
     Initialization:
 
-    em = EMoptimizer(dim, nparticles, objective, lower, upper)
+    em = EMoptimizer(dim, nparticles, objective, lower, upper, stepreduction=False, circular=False)
 
     where
     dim : problem dimension (number of arguments to the objective function)
@@ -15,7 +15,9 @@ class EMoptimizer:
     objective:  the objective function to minimize. Must take a single iterable argument.
     lower : the lower "corner" of the region of interest.
     upper : the upper "corner" of the region of interest.    
-    
+    stepreduction : If True, step sizes are scaled with (iteration)^(-0.25).
+    circular : If True, the region is treated as a torus (out from one edge, in from the other edge).
+
     Attributes:
         iterno: The current iteration number
     
@@ -40,7 +42,8 @@ class EMoptimizer:
     print em.getbestpos(), em.getbestofv()
     
     """
-    def __init__(self, dim, nparticles, objective, lower, upper):
+    def __init__(self, dim, nparticles, objective, lower, upper,
+                 stepreduction = False, circular = False):
         self.dim = dim # dimension of the problem
         self.nparticles = nparticles # number of particles
         self.f = objective  # the function to minimize, R^n -> R
@@ -48,8 +51,8 @@ class EMoptimizer:
         self.lower = np.array(lower) # the lower limit of the region
         self.pack = _Pack(self)  # Initialize a Pack, passing itself as parameter to it.
         self.iterno = 0
-        self.stepreduction = False  # If true, reduces the step size as t^(-0.25)
-        self.circular = False  # if true, the boundaries are circular (region is toroidal)
+        self.stepreduction = stepreduction  # If true, reduces the step size as t^(-0.25)
+        self.circular = circular  # if true, the boundaries are circular (region is toroidal)
 
     def iterate(self):
         """Make one iteration of the algorithm over all particles."""
