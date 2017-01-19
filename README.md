@@ -10,7 +10,7 @@ For algorithmic and theoretical details, see Birbil and Fang, [_An Electromagnet
 The code is organized simply in a single class, `EMoptimizer`. The initialization is as follows:
 
 ```
-EMoptimizer(dim, nparticles, objective, lower, upper)
+EMoptimizer(dim, nparticles, objective, lower, upper,stepreduction = False, circular = False)
 ```
 Initialization parameters:
 * `dim`: The dimension of the problem (how many arguments the objective function takes)
@@ -18,6 +18,8 @@ Initialization parameters:
 * `objective`: The objective function. Must be in the form `f(x)`, with `x` an iterable with `dim` elements.
 * `lower`: The lower "corner" of the optimization region. An iterable with `dim` elements.
 * `upper`: The upper "corner" of the optimization region. An iterable with `dim` elements.
+* `stepreduction`: If True, the step size is multiplied with (1+iterno)<sup>-1/4</sup>. Default: False.
+* `circular`: If True, particles wrap around when they leave the optimization region (out from one side, in from the opposite side). Default: False
 
 Attributes and methods:
 * `iterno`: The current iteration number.
